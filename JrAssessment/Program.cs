@@ -6,11 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<SqLiteDbContext>(options =>
-    options.UseSqlite("Data Source=assessment.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped(typeof(ISqLiteRepo<>), typeof(SqLiteRepo<>));
 
-builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IGuestService, GuestService>();
+builder.Services.AddScoped<IRoomService, ProductService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
