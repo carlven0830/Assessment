@@ -6,10 +6,14 @@ using System.Threading.Tasks;
 
 namespace JrAssessment.Model.Enums
 {
-    public enum StatusEnum
+    public enum EmpLevelEnum
     {
-        Pending,
-        InProgress,
-        Completed
+        EntryLevel,
+        Junior,
+        MidLevel,
+        Senior,
+        Lead,
+        Director,
+        VicePresident
     }
 }

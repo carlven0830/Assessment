@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace JrAssessment.Model.Enums
 {
-    public enum RoomTypeEnum
+    public enum RoleEnum
     {
-        Single,
-        Double,
-        Suite
+        SuperAdmin,
+        Admin,
+        Editor,
+        Contributor,
+        Reader
     }
 }

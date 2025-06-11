@@ -1,5 +1,5 @@
 ﻿using JrAssessment.Model.Database;
-using JrAssessment.Model.Response;
+using JrAssessment.Model.Responses;
 using Riok.Mapperly.Abstractions;
 
 namespace JrAssessment.Core.Mapping
@@ -7,7 +7,7 @@ namespace JrAssessment.Core.Mapping
     [Mapper]
     public static partial class ModelMapping
     {
-        public static partial RoomResponse MapToRoomResp(this TblRoom room);
-        public static partial BookingResponse MapToBookingResp(this TblBooking booking);
+        public static partial ProjectResponse MapToProjectResp(this TblProject project);
+        public static partial EmployeeResponse MapToEmployeeResp(this TblEmployee employee);
     }
 }

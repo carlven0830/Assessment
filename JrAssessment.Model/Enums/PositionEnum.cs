@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace JrAssessment.Model.Enums
 {
-    public enum BookingStatusEnum
+    public enum PositionEnum
     {
-        Confirmed,
-        Cancelled,
-        Completed
+        WebDeveloper,
+        NetworkEngineer,
+        ComputerTechnician,
+        ProjectManager
     }
 }

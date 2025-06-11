@@ -1,11 +1,6 @@
 ﻿using JrAssessment.Model.Database;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JrAssessment.Repository.SqLite
 {
@@ -13,7 +8,9 @@ namespace JrAssessment.Repository.SqLite
     {
         Task<T?> GetAsync(Expression<Func<T, bool>> expression);
         Task<T?> GetByOrderAsync(Expression<Func<T, object>> orderBy, bool asc = true);
+        Task<List<T>> GetAllAsync(Expression<Func<T, bool>>? filter = null);
         Task AddAsync(T entity);
+        Task UpdateAsync(T entity);
     }
     public class SqLiteRepo<T> : ISqLiteRepo<T> where T : Entity
     {
@@ -28,7 +25,9 @@ namespace JrAssessment.Repository.SqLite
 
         public async Task<T?> GetAsync(Expression<Func<T, bool>> filter)
         {
-            return await _dbSet.FirstOrDefaultAsync(filter);
+            IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            return await query.FirstOrDefaultAsync(filter);
         }
 
         public async Task<T?> GetByOrderAsync(
@@ -39,6 +38,18 @@ namespace JrAssessment.Repository.SqLite
             IQueryable<T> query = asc ? _dbSet.OrderBy(orderBy) : _dbSet.OrderByDescending(orderBy);
 
             return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<List<T>> GetAllAsync(Expression<Func<T, bool>>? filter = null)
+        {
+            IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (filter != null)
+            {
+                query = query.Where(filter);
+            }
+
+            return await query.ToListAsync();
         }
 
         public async Task AddAsync(T entity)
