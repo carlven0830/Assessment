@@ -1,10 +1,12 @@
-﻿using JrAssessment.Model.Enums;
+﻿using JrAssessment.Model.Base;
+using JrAssessment.Model.Enums;
+
 namespace JrAssessment.Model.Requests
 {
-    public class AddProjectRequest
+    public class FilterProjectRequest : ListRequest
     {
         public string ProjectTitle { get; set; } = string.Empty;
         public string ProjectDescription { get; set; } = string.Empty;
-        public ICollection<String> EmployeeIds { get; set; } = [];
+        public StatusEnum Status { get; set; }
     }
 }

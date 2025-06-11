@@ -74,7 +74,8 @@ namespace JrAssessment.Core.Services
             {
                 new ("AccountId", request.AccountId.ToString()),
                 new (ClaimTypes.Name, employee.Username),
-                new ("Action", request.Action)
+                new ("Action", request.Action),
+                new (ClaimTypes.Role, employee.EmpLevel.ToString())
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

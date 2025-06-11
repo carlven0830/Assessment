@@ -2,9 +2,9 @@
 
 namespace JrAssessment.Model.Requests
 {
-    public class UpdateRoomRequest : AddProjectRequest
+    public class UpdateProjectRequest : AddProjectRequest
     {
-        public Guid Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public StatusEnum Status { get; set; }
     }
 }

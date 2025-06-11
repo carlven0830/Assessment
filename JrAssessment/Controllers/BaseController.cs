@@ -16,8 +16,9 @@ namespace JrAssessment.Controllers
             var id = claimsIdentity?.FindFirst("AccountId");
             var username = claimsIdentity?.FindFirst(ClaimTypes.Name);
             var action = claimsIdentity?.FindFirst("Action");
+            var role = claimsIdentity?.FindFirst(ClaimTypes.Role);
 
-            if (id == null || username == null || action == null)
+            if (id == null || username == null || action == null || role == null)
             {
                 isValid = false;
 
@@ -36,6 +37,7 @@ namespace JrAssessment.Controllers
                 AccoundId = new Guid(id.Value),
                 Username = username.Value,
                 Action = action.Value,
+                Role = role.Value,
             };
 
             isValid = true;
