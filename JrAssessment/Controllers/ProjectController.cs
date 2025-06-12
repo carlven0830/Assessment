@@ -1,9 +1,7 @@
 ﻿using FluentValidation;
 using JrAssessment.Core.Services;
-using JrAssessment.Model.Base;
 using JrAssessment.Model.Enums;
 using JrAssessment.Model.Requests;
-using JrAssessment.Model.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +17,28 @@ namespace JrAssessment.Controllers
         public ProjectController(IProjectService projectServ)
         {
             _projectServ = projectServ;
+        }
+
+        [HttpGet("List")]
+        public async Task<IActionResult> GetProjectList([FromQuery] FilterProjectRequest request, [FromServices] IValidator<FilterProjectRequest> validator)
+        {
+            var resultRequest = await validator.ValidateAsync(request);
+
+            if (!resultRequest.IsValid)
+            {
+                return Ok(resultRequest.Errors);
+            }
+
+            var resultClaim = ValidateClaim(ActionEnum.GetProjectList.ToString(), out bool isValid);
+
+            if (!isValid)
+            {
+                return Ok(resultClaim);
+            }
+
+            var resp = await _projectServ.GetProjectListAsync(request, resultClaim.Content);
+
+            return Ok(resp);
         }
 
         [HttpGet("Get/{id}")]

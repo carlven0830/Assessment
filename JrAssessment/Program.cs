@@ -18,6 +18,7 @@ builder.Services.AddDbContext<SqLiteDbContext>(options =>
 
 builder.Services.AddScoped(typeof(ISqLiteRepo<>), typeof(SqLiteRepo<>));
 
+builder.Services.AddScoped<IBaseService, BaseService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();

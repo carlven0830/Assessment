@@ -6,19 +6,21 @@ using JrAssessment.Model.Requests;
 using JrAssessment.Model.Responses;
 using JrAssessment.Model.Settings;
 using JrAssessment.Repository.SqLite;
+using System.Linq.Expressions;
 using System.Net;
 
 namespace JrAssessment.Core.Services
 {
     public interface IProjectService
     {
+        Task<ListResponse<ProjectResponse>> GetProjectListAsync(FilterProjectRequest request, ClaimSetting claim);
         Task<ContentResponse<ProjectResponse>> GetProjectAsync(string id);
         Task<ContentResponse<ProjectResponse>> AddProjectAsync(AddProjectRequest request, ClaimSetting claim);
         Task<ContentResponse<ProjectResponse>> UpdateProjectAsync(UpdateProjectRequest request, ClaimSetting claim);
         Task<ContentResponse<ProjectResponse>> DeleteProjectAsync(string id);
     }
 
-    public class ProjectService : IProjectService
+    public class ProjectService : BaseService, IProjectService
     {
         private readonly ISqLiteRepo<TblProject> _projectRepo;
         private readonly ISqLiteRepo<TblEmployee> _empRepo;
@@ -29,9 +31,70 @@ namespace JrAssessment.Core.Services
             _empRepo     = empRepo;
         }
 
-        //public async Task<ListResponse<List<ProjectResponse>>> GetAllProjectAsync(FilterProjectRequest request)
-        //{
-        //}
+        public async Task<ListResponse<ProjectResponse>> GetProjectListAsync(FilterProjectRequest request, ClaimSetting claim)
+        {
+            var listFilter = new List<Expression<Func<TblProject, bool>>>();
+            Expression<Func<TblProject, object>> sortOrderBy;
+
+            var projectList = new List<TblProject>();
+            long totalCount = 0;
+            long totalPage = 0;
+
+            bool resultAccess = ValidateAccess(claim, EmpLevelEnum.Lead, EmpLevelEnum.Director, EmpLevelEnum.VicePresident);
+
+            if (!resultAccess)
+            {
+                listFilter.Add(x => x.TblEmployees.Any(e => e.Id == claim.AccoundId));
+            }
+
+            if (!string.IsNullOrEmpty(request.ProjectTitle))
+            {
+                listFilter.Add(x => x.ProjectTitle.Contains(request.ProjectTitle));
+            }
+
+            if (!string.IsNullOrEmpty(request.ProjectDescription))
+            {
+                listFilter.Add(x => x.ProjectDescription.Contains(request.ProjectDescription));
+            }
+
+            if (request.Status != null)
+            {
+                listFilter.Add(x => x.Status == request.Status);
+            }
+
+            switch (request.Orderby)
+            {
+                case OrderByEnum.ProjectDescription:
+                    sortOrderBy = x => x.ProjectDescription;
+                    break;
+                case OrderByEnum.ProjectTitle:
+                    sortOrderBy = x => x.ProjectTitle;
+                    break;
+                case OrderByEnum.Status:
+                    sortOrderBy = x => x.Status;
+                    break;
+                default:
+                    sortOrderBy = x => x.CreateDate;
+                    break;
+            }
+
+            if (request.IsPageList)
+            {
+                (projectList, totalCount) = await _projectRepo.GetAllByPaginationAsync(request.PageNum, request.PageSize, listFilter, sortOrderBy, request.Asc);
+
+                totalPage = totalCount / request.PageSize;
+            }
+            else
+            {
+                (projectList, totalCount) = await _projectRepo.GetAllAsync(listFilter, sortOrderBy, request.Asc);
+
+                totalPage = 1;
+            }
+
+            var resp = projectList.MapToProjectListResp();
+
+            return ListResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success get project list", resp, totalPage, totalCount);
+        }
 
         public async Task<ContentResponse<ProjectResponse>> GetProjectAsync(string id)
         {
@@ -58,11 +121,23 @@ namespace JrAssessment.Core.Services
         {
             try
             {
+                var listFilter = new List<Expression<Func<TblEmployee, bool>>>();
+
+                bool resultAccess = ValidateAccess(claim, EmpLevelEnum.Lead, EmpLevelEnum.Director, EmpLevelEnum.VicePresident);
+
+                if (!resultAccess)
+                {
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.Unauthorized, "Without permission to access", null);
+                }
+
                 var employees = new List<TblEmployee>();
-                
+                long totalCount = 0;
+
                 if (request.EmployeeIds.Count != 0)
                 {
-                    employees = await _empRepo.GetAllAsync(x => request.EmployeeIds.Contains(x.Id.ToString()));
+                    listFilter.Add(x => request.EmployeeIds.Contains(x.Id.ToString()));
+
+                    (employees, totalCount) = await _empRepo.GetAllAsync(listFilter);
 
                     if (employees.Count == 0)
                     {
@@ -95,6 +170,8 @@ namespace JrAssessment.Core.Services
         {
             try
             {
+                var listFilter = new List<Expression<Func<TblEmployee, bool>>>();
+
                 var project = await _projectRepo.GetAsync(x => x.Id == new Guid(request.Id));
 
                 if (project == null)
@@ -102,16 +179,30 @@ namespace JrAssessment.Core.Services
                     return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Project not found", null);
                 }
 
-                var employees = await _empRepo.GetAllAsync(x => request.EmployeeIds.Contains(x.Id.ToString()));
+                var employees = new List<TblEmployee>();
+                long totalCount = 0;
 
-                if (employees.Count == 0)
+                if (request.EmployeeIds.Count != 0)
                 {
-                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Employees not found", null);
+                    listFilter.Add(x => request.EmployeeIds.Contains(x.Id.ToString()));
+
+                    (employees, totalCount) = await _empRepo.GetAllAsync(listFilter);
+
+                    if (employees.Count == 0)
+                    {
+                        return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Employees not found", null);
+                    }
                 }
 
-                project.ProjectTitle = request.ProjectTitle;
-                project.ProjectDescription = request.ProjectDescription;
-                project.TblEmployees = employees;
+                bool resultAccess = ValidateAccess(claim, EmpLevelEnum.Lead, EmpLevelEnum.Director, EmpLevelEnum.VicePresident);
+
+                if (resultAccess)
+                {
+                    project.ProjectTitle = request.ProjectTitle;
+                    project.ProjectDescription = request.ProjectDescription;
+                    project.TblEmployees = employees;
+                }
+
                 project.Status = request.Status;
                 project.ModifiedBy = claim.Username;
 

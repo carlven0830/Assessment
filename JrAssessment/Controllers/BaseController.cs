@@ -1,4 +1,5 @@
 ﻿using JrAssessment.Model.Base;
+using JrAssessment.Model.Enums;
 using JrAssessment.Model.Settings;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;

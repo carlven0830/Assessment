@@ -12,5 +12,11 @@ namespace JrAssessment.Model.Enums
         ProjectTitle,
         ProjectDescription,
         Status,
+
+        //Basic
+        CreateDate,
+        CreateBy,
+        ModifiedDate,
+        ModifiedBy,
     }
 }

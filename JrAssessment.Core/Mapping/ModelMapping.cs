@@ -8,6 +8,7 @@ namespace JrAssessment.Core.Mapping
     public static partial class ModelMapping
     {
         public static partial ProjectResponse MapToProjectResp(this TblProject project);
+        public static partial List<ProjectResponse> MapToProjectListResp(this List<TblProject> projectList);
         public static partial EmployeeResponse MapToEmployeeResp(this TblEmployee employee);
     }
 }

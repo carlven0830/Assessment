@@ -7,9 +7,8 @@ namespace JrAssessment.Repository.SqLite
     public interface ISqLiteRepo<T> where T : Entity
     {
         Task<T?> GetAsync(Expression<Func<T, bool>> expression);
-        Task<T?> GetByOrderAsync(Expression<Func<T, object>> orderBy, bool asc = true);
-        Task<List<T>> GetAllAsync(Expression<Func<T, bool>>? filter = null);
-        Task<List<T>> GetAllByPaginationAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true, int skip = 1, int limit = 15);
+        Task<(List<T> Content, long TotalCount)> GetAllAsync(List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true);
+        Task<(List<T> Content, long TotalCount)> GetAllByPaginationAsync(int pageNum, int pageSize, List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true);
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
         Task<T?> DeleteAsync(Expression<Func<T, bool>> filter);
@@ -32,41 +31,20 @@ namespace JrAssessment.Repository.SqLite
             return await query.FirstOrDefaultAsync(filter);
         }
 
-        public async Task<T?> GetByOrderAsync(
-            Expression<Func<T, object>> orderBy,
+        public async Task<(List<T> Content, long TotalCount)> GetAllAsync(
+            List<Expression<Func<T, bool>>>? listFilter = null,
+            Expression<Func<T, object>>? orderBy = null,
             bool asc = true
         )
         {
-            IQueryable<T> query = asc ? _dbSet.OrderBy(orderBy) : _dbSet.OrderByDescending(orderBy);
-
-            return await query.FirstOrDefaultAsync();
-        }
-
-        public async Task<List<T>> GetAllAsync(Expression<Func<T, bool>>? filter = null)
-        {
             IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
 
-            if (filter != null)
+            if (listFilter != null)
             {
-                query = query.Where(filter);
-            }
-
-            return await query.ToListAsync();
-        }
-
-        public async Task<List<T>> GetAllByPaginationAsync(
-            Expression<Func<T, bool>>? filter = null,
-            Expression<Func<T, object>>? orderBy = null,
-            bool asc = true,
-            int skip = 1, 
-            int limit = 15
-        )
-        {
-            IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
-
-            if (filter != null)
-            {
-                query = query.Where(filter);
+                foreach(var filter in listFilter)
+                {
+                    query = query.Where(filter);
+                }
             }
 
             if (orderBy != null)
@@ -74,7 +52,41 @@ namespace JrAssessment.Repository.SqLite
                 query = asc ? query.OrderBy(orderBy) : query.OrderByDescending(orderBy);
             }
 
-            return await query.Skip(skip).Take(limit).ToListAsync();
+            long totalCount = await query.LongCountAsync();
+
+            var content = await query.ToListAsync();
+
+            return (content, totalCount);
+        }
+
+        public async Task<(List<T> Content, long TotalCount)> GetAllByPaginationAsync(
+            int pageNum,
+            int pageSize,
+            List<Expression<Func<T, bool>>>? listFilter = null,
+            Expression<Func<T, object>>? orderBy = null,
+            bool asc = true
+        )
+        {
+            IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (listFilter != null)
+            {
+                foreach(var filter in listFilter)
+                {
+                    query = query.Where(filter);
+                }
+            }
+
+            if (orderBy != null)
+            {
+                query = asc ? query.OrderBy(orderBy) : query.OrderByDescending(orderBy);
+            }
+
+            long totalCount = await query.LongCountAsync();
+
+            var content = await query.Skip((pageNum - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return (content, totalCount);
         }
 
         public async Task AddAsync(T entity)
