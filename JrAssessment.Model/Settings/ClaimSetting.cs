@@ -11,5 +11,6 @@ namespace JrAssessment.Model.Settings
         public Guid AccoundId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Action { get; set; }   = string.Empty;
+        public string Role { get; set; } = string.Empty;
     }
 }

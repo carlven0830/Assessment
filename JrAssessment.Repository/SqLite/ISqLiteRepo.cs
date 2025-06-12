@@ -9,8 +9,10 @@ namespace JrAssessment.Repository.SqLite
         Task<T?> GetAsync(Expression<Func<T, bool>> expression);
         Task<T?> GetByOrderAsync(Expression<Func<T, object>> orderBy, bool asc = true);
         Task<List<T>> GetAllAsync(Expression<Func<T, bool>>? filter = null);
+        Task<List<T>> GetAllByPaginationAsync(Expression<Func<T, bool>>? filter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true, int skip = 1, int limit = 15);
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
+        Task<T?> DeleteAsync(Expression<Func<T, bool>> filter);
     }
     public class SqLiteRepo<T> : ISqLiteRepo<T> where T : Entity
     {
@@ -52,6 +54,29 @@ namespace JrAssessment.Repository.SqLite
             return await query.ToListAsync();
         }
 
+        public async Task<List<T>> GetAllByPaginationAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Expression<Func<T, object>>? orderBy = null,
+            bool asc = true,
+            int skip = 1, 
+            int limit = 15
+        )
+        {
+            IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (filter != null)
+            {
+                query = query.Where(filter);
+            }
+
+            if (orderBy != null)
+            {
+                query = asc ? query.OrderBy(orderBy) : query.OrderByDescending(orderBy);
+            }
+
+            return await query.Skip(skip).Take(limit).ToListAsync();
+        }
+
         public async Task AddAsync(T entity)
         {
             entity.Id         = Guid.NewGuid();
@@ -69,9 +94,20 @@ namespace JrAssessment.Repository.SqLite
             await _context.SaveChangesAsync();
         }
 
-        //public async Task DeleteAsync(Expression<Func<T, bool>> filter)
-        //{
-        //    var
-        //}
+        public async Task<T?> DeleteAsync(Expression<Func<T, bool>> filter)
+        {
+            var entity = await _dbSet.Where(filter).FirstOrDefaultAsync();
+
+            if (entity != null)
+            {
+                entity.IsEnabled = false;
+
+                _dbSet.Update(entity);
+
+                await _context.SaveChangesAsync();
+            }
+
+            return entity;
+        }
     }
 }

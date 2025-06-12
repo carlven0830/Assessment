@@ -48,7 +48,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Register Fluent Validation
-builder.Services.AddValidatorsFromAssemblyContaining<ProjectValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<AddProjectValidator>();
 builder.Services.AddMvc(options =>
 {
     options.ModelValidatorProviders.Clear(); // Clear default validator providers

@@ -4,6 +4,7 @@ using JrAssessment.Model.Database;
 using JrAssessment.Model.Enums;
 using JrAssessment.Model.Requests;
 using JrAssessment.Model.Responses;
+using JrAssessment.Model.Settings;
 using JrAssessment.Repository.SqLite;
 using System.Net;
 
@@ -11,7 +12,10 @@ namespace JrAssessment.Core.Services
 {
     public interface IProjectService
     {
-        Task<ContentResponse<ProjectResponse>> AddProjectAsync(AddProjectRequest request);
+        Task<ContentResponse<ProjectResponse>> GetProjectAsync(string id);
+        Task<ContentResponse<ProjectResponse>> AddProjectAsync(AddProjectRequest request, ClaimSetting claim);
+        Task<ContentResponse<ProjectResponse>> UpdateProjectAsync(UpdateProjectRequest request, ClaimSetting claim);
+        Task<ContentResponse<ProjectResponse>> DeleteProjectAsync(string id);
     }
 
     public class ProjectService : IProjectService
@@ -25,15 +29,45 @@ namespace JrAssessment.Core.Services
             _empRepo     = empRepo;
         }
 
-        public async Task<ContentResponse<ProjectResponse>> AddProjectAsync(AddProjectRequest request)
+        //public async Task<ListResponse<List<ProjectResponse>>> GetAllProjectAsync(FilterProjectRequest request)
+        //{
+        //}
+
+        public async Task<ContentResponse<ProjectResponse>> GetProjectAsync(string id)
         {
             try
             {
-                var employees = await _empRepo.GetAllAsync(x => request.EmployeeIds.Contains(x.Id));
+                var project = await _projectRepo.GetAsync(x => x.Id == new Guid(id));
 
-                if (employees.Count == 0)
+                if (project == null)
                 {
-                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Employees not found", null);
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Project not found", null);
+                }
+
+                var resp = project.MapToProjectResp();
+
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success get the project", resp);
+            }
+            catch (Exception ex)
+            {
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
+            }
+        }
+
+        public async Task<ContentResponse<ProjectResponse>> AddProjectAsync(AddProjectRequest request, ClaimSetting claim)
+        {
+            try
+            {
+                var employees = new List<TblEmployee>();
+                
+                if (request.EmployeeIds.Count != 0)
+                {
+                    employees = await _empRepo.GetAllAsync(x => request.EmployeeIds.Contains(x.Id.ToString()));
+
+                    if (employees.Count == 0)
+                    {
+                        return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Employees not found", null);
+                    }
                 }
 
                 var newProject = new TblProject
@@ -41,7 +75,8 @@ namespace JrAssessment.Core.Services
                     ProjectTitle = request.ProjectTitle,
                     ProjectDescription = request.ProjectDescription,
                     Status = StatusEnum.Pending,
-                    TblEmployees = employees
+                    TblEmployees = employees,
+                    CreateBy = claim.Username
                 };
 
                 await _projectRepo.AddAsync(newProject);
@@ -56,18 +91,66 @@ namespace JrAssessment.Core.Services
             }
         }
 
-        //public async Task<ContentResponse<RoomResponse>> UpdateRoomAsync(UpdateRoomRequest request)
-        //{
-        //    var room = await _roomRepo.GetAsync(x => x.Id == request.Id);
+        public async Task<ContentResponse<ProjectResponse>> UpdateProjectAsync(UpdateProjectRequest request, ClaimSetting claim)
+        {
+            try
+            {
+                var project = await _projectRepo.GetAsync(x => x.Id == new Guid(request.Id));
 
-        //    if (room == null)
-        //    {
-        //        return ContentResponse<RoomResponse>.Add(HttpStatusCode.BadRequest, "Room not found", null);
-        //    }
+                if (project == null)
+                {
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Project not found", null);
+                }
 
+                var employees = await _empRepo.GetAllAsync(x => request.EmployeeIds.Contains(x.Id.ToString()));
 
+                if (employees.Count == 0)
+                {
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Employees not found", null);
+                }
 
-        //    return ContentResponse<RoomResponse>.Add(HttpStatusCode.OK, "Success update the room", resp);
-        //}
+                project.ProjectTitle = request.ProjectTitle;
+                project.ProjectDescription = request.ProjectDescription;
+                project.TblEmployees = employees;
+                project.Status = request.Status;
+                project.ModifiedBy = claim.Username;
+
+                await _projectRepo.UpdateAsync(project);
+
+                var resp = project.MapToProjectResp();
+
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success update the project", resp);
+            }
+            catch (Exception ex)
+            {
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
+            }
+        }
+
+        public async Task<ContentResponse<ProjectResponse>> DeleteProjectAsync(string id)
+        {
+            try
+            {
+                var deletedProject = await _projectRepo.DeleteAsync(x => x.Id == new Guid(id));
+
+                if (deletedProject == null)
+                {
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Project not found", null);
+                }
+
+                if (deletedProject.IsEnabled)
+                {
+                    return ContentResponse<ProjectResponse>.Add(HttpStatusCode.BadRequest, "Fail delete the project", null);
+                }
+
+                var resp = deletedProject.MapToProjectResp();
+
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success delete the project", resp);
+            }
+            catch (Exception ex)
+            {
+                return ContentResponse<ProjectResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
+            }
+        }
     }
 }
