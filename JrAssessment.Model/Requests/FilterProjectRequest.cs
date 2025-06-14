@@ -8,5 +8,6 @@ namespace JrAssessment.Model.Requests
         public string ProjectTitle { get; set; } = string.Empty;
         public string ProjectDescription { get; set; } = string.Empty;
         public StatusEnum? Status { get; set; }
+        public string AssignedEmpName { get; set; } = string.Empty;
     }
 }

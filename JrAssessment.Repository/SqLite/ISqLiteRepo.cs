@@ -6,9 +6,9 @@ namespace JrAssessment.Repository.SqLite
 {
     public interface ISqLiteRepo<T> where T : Entity
     {
-        Task<T?> GetAsync(Expression<Func<T, bool>> expression);
-        Task<(List<T> Content, long TotalCount)> GetAllAsync(List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true);
-        Task<(List<T> Content, long TotalCount)> GetAllByPaginationAsync(int pageNum, int pageSize, List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true);
+        Task<T?> GetAsync(Expression<Func<T, bool>> expression, Func<IQueryable<T>, IQueryable<T>>? include = null);
+        Task<(List<T> Content, long TotalCount)> GetAllAsync(List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true, Func<IQueryable<T>, IQueryable<T>>? include = null);
+        Task<(List<T> Content, long TotalCount)> GetAllByPaginationAsync(int pageNum, int pageSize, List<Expression<Func<T, bool>>>? listFilter = null, Expression<Func<T, object>>? orderBy = null, bool asc = true, Func<IQueryable<T>, IQueryable<T>>? include = null);
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
         Task<T?> DeleteAsync(Expression<Func<T, bool>> filter);
@@ -24,9 +24,17 @@ namespace JrAssessment.Repository.SqLite
             _dbSet = context.Set<T>();
         }
 
-        public async Task<T?> GetAsync(Expression<Func<T, bool>> filter)
+        public async Task<T?> GetAsync(
+            Expression<Func<T, bool>> filter,
+            Func<IQueryable<T>, IQueryable<T>>? include = null
+        )
         {
             IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (include != null)
+            {
+                query = include(query);
+            }
 
             return await query.FirstOrDefaultAsync(filter);
         }
@@ -34,10 +42,16 @@ namespace JrAssessment.Repository.SqLite
         public async Task<(List<T> Content, long TotalCount)> GetAllAsync(
             List<Expression<Func<T, bool>>>? listFilter = null,
             Expression<Func<T, object>>? orderBy = null,
-            bool asc = true
+            bool asc = true,
+            Func<IQueryable<T>, IQueryable<T>>? include = null
         )
         {
             IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (include != null)
+            {
+                query = include(query);
+            }
 
             if (listFilter != null)
             {
@@ -64,10 +78,16 @@ namespace JrAssessment.Repository.SqLite
             int pageSize,
             List<Expression<Func<T, bool>>>? listFilter = null,
             Expression<Func<T, object>>? orderBy = null,
-            bool asc = true
+            bool asc = true,
+            Func<IQueryable<T>, IQueryable<T>>? include = null
         )
         {
             IQueryable<T> query = _dbSet.Where(x => x.IsEnabled);
+
+            if (include != null)
+            {
+                query = include(query);
+            }
 
             if (listFilter != null)
             {

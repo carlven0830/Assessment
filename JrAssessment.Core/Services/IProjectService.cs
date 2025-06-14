@@ -6,6 +6,7 @@ using JrAssessment.Model.Requests;
 using JrAssessment.Model.Responses;
 using JrAssessment.Model.Settings;
 using JrAssessment.Repository.SqLite;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using System.Net;
 
@@ -35,6 +36,7 @@ namespace JrAssessment.Core.Services
         {
             var listFilter = new List<Expression<Func<TblProject, bool>>>();
             Expression<Func<TblProject, object>> sortOrderBy;
+            Func<IQueryable<TblProject>, IQueryable<TblProject>> include = x => x.Include(e => e.TblEmployees);
 
             var projectList = new List<TblProject>();
             long totalCount = 0;
@@ -62,6 +64,11 @@ namespace JrAssessment.Core.Services
                 listFilter.Add(x => x.Status == request.Status);
             }
 
+            if (!string.IsNullOrEmpty(request.AssignedEmpName))
+            {
+                listFilter.Add(x => x.TblEmployees.Any(e => e.EmpName.Contains(request.AssignedEmpName)));
+            }
+
             switch (request.Orderby)
             {
                 case OrderByEnum.ProjectDescription:
@@ -80,13 +87,20 @@ namespace JrAssessment.Core.Services
 
             if (request.IsPageList)
             {
-                (projectList, totalCount) = await _projectRepo.GetAllByPaginationAsync(request.PageNum, request.PageSize, listFilter, sortOrderBy, request.Asc);
+                (projectList, totalCount) = await _projectRepo.GetAllByPaginationAsync(
+                    request.PageNum,
+                    request.PageSize,
+                    listFilter,
+                    sortOrderBy,
+                    request.Asc,
+                    include
+                );
 
                 totalPage = totalCount / request.PageSize;
             }
             else
             {
-                (projectList, totalCount) = await _projectRepo.GetAllAsync(listFilter, sortOrderBy, request.Asc);
+                (projectList, totalCount) = await _projectRepo.GetAllAsync(listFilter, sortOrderBy, request.Asc, include);
 
                 totalPage = 1;
             }
@@ -100,7 +114,10 @@ namespace JrAssessment.Core.Services
         {
             try
             {
-                var project = await _projectRepo.GetAsync(x => x.Id == new Guid(id));
+                Expression<Func<TblProject, bool>> filter = x => x.Id == new Guid(id);
+                Func<IQueryable<TblProject>, IQueryable<TblProject>> include = x => x.Include(e => e.TblEmployees);
+
+                var project = await _projectRepo.GetAsync(filter, include);
 
                 if (project == null)
                 {
