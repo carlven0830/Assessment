@@ -26,6 +26,27 @@ namespace JrAssessment.Core.Mapping
             };
         }
 
+        public static List<EmployeeResponse> MapToEmployeeListResp(this List<TblEmployee> employees)
+        {
+            return employees.Select(x => new EmployeeResponse
+            {
+                Id = x.Id,
+                CreateBy = x.CreateBy,
+                CreateDate = x.CreateDate,
+                ModifiedBy = x.ModifiedBy,
+                ModifiedDate = x.ModifiedDate,
+                IsEnabled = x.IsEnabled,
+                Username = x.Username,
+                Password = x.Password,
+                Email = x.Email,
+                Phone = x.Phone,
+                SessionKey = x.SessionKey,
+                EmpName = x.EmpName,
+                EmpPosition = x.EmpPosition.ToString(),
+                EmpLevel = x.EmpLevel.ToString()
+            }).ToList();
+        }
+
         public static ProjectResponse MapToProjectResp(this TblProject project)
         {
             return new ProjectResponse

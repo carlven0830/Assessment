@@ -8,6 +8,10 @@ namespace JrAssessment.Model.Enums
 {
     public enum ActionEnum
     {
+        // Employee
+        GetEmployeeList,
+
+        // Project
         GetProjectList,
         GetProject,
         AddProject,

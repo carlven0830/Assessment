@@ -32,45 +32,54 @@ namespace JrAssessment.Core.Services
 
         public async Task<ContentResponse<EmployeeResponse>> LoginEmployeeAsync(LoginRequest request)
         {
-            var employee = await _empRepo.GetAsync(x => x.Username == request.Username);
-
-            if (employee == null)
+            try
             {
-                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Username not found", null);
-            }
+                var employee = await _empRepo.GetAsync(x => x.Username == request.Username);
 
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, employee.Password))
+                if (employee == null)
+                {
+                    return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Username not found", null);
+                }
+
+                if (!BCrypt.Net.BCrypt.Verify(request.Password, employee.Password))
+                {
+                    return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Password is wrong", null);
+                }
+
+                employee.SessionKey = Guid.NewGuid();
+
+                await _empRepo.UpdateAsync(employee);
+
+                var resp = employee.MapToEmployeeResp();
+
+                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.OK, "Success login", resp);
+            }
+            catch (Exception ex)
             {
-                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Password is wrong", null);
+                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
             }
-
-            employee.SessionKey = Guid.NewGuid();
-
-            await _empRepo.UpdateAsync(employee);
-
-            var resp = employee.MapToEmployeeResp();
-
-            return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.OK, "Success login", resp);
         }
 
         public async Task<ContentResponse<EmployeeResponse>> GetJwtTokenAsync(JwtTokenRequest request)
         {
-            var employee = await _empRepo.GetAsync(x => x.Id == new Guid(request.AccountId));
-
-            if (employee == null)
+            try
             {
-                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Employee not found", null);
-            }
+                var employee = await _empRepo.GetAsync(x => x.Id == new Guid(request.AccountId));
 
-            if (employee.SessionKey != new Guid(request.SessionKey))
-            {
-                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Invalid session key", null);
-            }
+                if (employee == null)
+                {
+                    return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Employee not found", null);
+                }
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_jwtToken.SecretKey);
+                if (employee.SessionKey != new Guid(request.SessionKey))
+                {
+                    return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.BadRequest, "Invalid session key", null);
+                }
 
-            var claims = new List<Claim>
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.UTF8.GetBytes(_jwtToken.SecretKey);
+
+                var claims = new List<Claim>
             {
                 new ("AccountId", request.AccountId.ToString()),
                 new (ClaimTypes.Name, employee.Username),
@@ -78,21 +87,26 @@ namespace JrAssessment.Core.Services
                 new (ClaimTypes.Role, employee.EmpLevel.ToString())
             };
 
-            var tokenDescriptor = new SecurityTokenDescriptor
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(claims),
+                    Expires = DateTime.UtcNow.AddMinutes(30), // access token expiry
+                    Audience = _jwtToken.Audience,
+                    Issuer = _jwtToken.Issuer,
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                };
+
+                var token = tokenHandler.CreateToken(tokenDescriptor);
+                var encodedToken = tokenHandler.WriteToken(token);
+
+                var resp = employee.MapToEmployeeResp();
+
+                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.OK, "Success generate Jwt Token", resp, encodedToken);
+            }
+            catch (Exception ex)
             {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(30), // access token expiry
-                Audience = _jwtToken.Audience,
-                Issuer = _jwtToken.Issuer,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var encodedToken = tokenHandler.WriteToken(token);
-
-            var resp = employee.MapToEmployeeResp();
-
-            return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.OK, "Success generate Jwt Token", resp, encodedToken);
+                return ContentResponse<EmployeeResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
+            }
         }
     }
 }

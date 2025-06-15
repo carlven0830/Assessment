@@ -34,80 +34,87 @@ namespace JrAssessment.Core.Services
 
         public async Task<ListResponse<ProjectResponse>> GetProjectListAsync(FilterProjectRequest request, ClaimSetting claim)
         {
-            var listFilter = new List<Expression<Func<TblProject, bool>>>();
-            Expression<Func<TblProject, object>> sortOrderBy;
-            Func<IQueryable<TblProject>, IQueryable<TblProject>> include = x => x.Include(e => e.TblEmployees);
-
-            var projectList = new List<TblProject>();
-            long totalCount = 0;
-            long totalPage = 0;
-
-            bool resultAccess = ValidateAccess(claim, EmpLevelEnum.Lead, EmpLevelEnum.Director, EmpLevelEnum.VicePresident);
-
-            if (!resultAccess)
+            try
             {
-                listFilter.Add(x => x.TblEmployees.Any(e => e.Id == claim.AccoundId));
-            }
+                var listFilter = new List<Expression<Func<TblProject, bool>>>();
+                Expression<Func<TblProject, object>> sortOrderBy;
+                Func<IQueryable<TblProject>, IQueryable<TblProject>> include = x => x.Include(e => e.TblEmployees);
 
-            if (!string.IsNullOrEmpty(request.ProjectTitle))
+                var projectList = new List<TblProject>();
+                long totalCount = 0;
+                long totalPage = 0;
+
+                bool resultAccess = ValidateAccess(claim, EmpLevelEnum.Lead, EmpLevelEnum.Director, EmpLevelEnum.VicePresident);
+
+                if (!resultAccess)
+                {
+                    listFilter.Add(x => x.TblEmployees.Any(e => e.Id == claim.AccoundId));
+                }
+
+                if (!string.IsNullOrEmpty(request.ProjectTitle))
+                {
+                    listFilter.Add(x => x.ProjectTitle.Contains(request.ProjectTitle));
+                }
+
+                if (!string.IsNullOrEmpty(request.ProjectDescription))
+                {
+                    listFilter.Add(x => x.ProjectDescription.Contains(request.ProjectDescription));
+                }
+
+                if (request.Status != null)
+                {
+                    listFilter.Add(x => x.Status == request.Status);
+                }
+
+                if (!string.IsNullOrEmpty(request.AssignedEmpName))
+                {
+                    listFilter.Add(x => x.TblEmployees.Any(e => e.EmpName.Contains(request.AssignedEmpName)));
+                }
+
+                switch (request.Orderby)
+                {
+                    case OrderByEnum.ProjectDescription:
+                        sortOrderBy = x => x.ProjectDescription;
+                        break;
+                    case OrderByEnum.ProjectTitle:
+                        sortOrderBy = x => x.ProjectTitle;
+                        break;
+                    case OrderByEnum.Status:
+                        sortOrderBy = x => x.Status;
+                        break;
+                    default:
+                        sortOrderBy = x => x.CreateDate;
+                        break;
+                }
+
+                if (request.IsPageList)
+                {
+                    (projectList, totalCount) = await _projectRepo.GetAllByPaginationAsync(
+                        request.PageNum,
+                        request.PageSize,
+                        listFilter,
+                        sortOrderBy,
+                        request.Asc,
+                        include
+                    );
+
+                    totalPage = totalCount / request.PageSize;
+                }
+                else
+                {
+                    (projectList, totalCount) = await _projectRepo.GetAllAsync(listFilter, sortOrderBy, request.Asc, include);
+
+                    totalPage = 1;
+                }
+
+                var resp = projectList.MapToProjectListResp();
+
+                return ListResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success get project list", resp, totalPage, totalCount);
+            }
+            catch (Exception ex)
             {
-                listFilter.Add(x => x.ProjectTitle.Contains(request.ProjectTitle));
+                return ListResponse<ProjectResponse>.Add(HttpStatusCode.InternalServerError, ex.Message, null);
             }
-
-            if (!string.IsNullOrEmpty(request.ProjectDescription))
-            {
-                listFilter.Add(x => x.ProjectDescription.Contains(request.ProjectDescription));
-            }
-
-            if (request.Status != null)
-            {
-                listFilter.Add(x => x.Status == request.Status);
-            }
-
-            if (!string.IsNullOrEmpty(request.AssignedEmpName))
-            {
-                listFilter.Add(x => x.TblEmployees.Any(e => e.EmpName.Contains(request.AssignedEmpName)));
-            }
-
-            switch (request.Orderby)
-            {
-                case OrderByEnum.ProjectDescription:
-                    sortOrderBy = x => x.ProjectDescription;
-                    break;
-                case OrderByEnum.ProjectTitle:
-                    sortOrderBy = x => x.ProjectTitle;
-                    break;
-                case OrderByEnum.Status:
-                    sortOrderBy = x => x.Status;
-                    break;
-                default:
-                    sortOrderBy = x => x.CreateDate;
-                    break;
-            }
-
-            if (request.IsPageList)
-            {
-                (projectList, totalCount) = await _projectRepo.GetAllByPaginationAsync(
-                    request.PageNum,
-                    request.PageSize,
-                    listFilter,
-                    sortOrderBy,
-                    request.Asc,
-                    include
-                );
-
-                totalPage = totalCount / request.PageSize;
-            }
-            else
-            {
-                (projectList, totalCount) = await _projectRepo.GetAllAsync(listFilter, sortOrderBy, request.Asc, include);
-
-                totalPage = 1;
-            }
-
-            var resp = projectList.MapToProjectListResp();
-
-            return ListResponse<ProjectResponse>.Add(HttpStatusCode.OK, "Success get project list", resp, totalPage, totalCount);
         }
 
         public async Task<ContentResponse<ProjectResponse>> GetProjectAsync(string id)
@@ -152,7 +159,9 @@ namespace JrAssessment.Core.Services
 
                 if (request.EmployeeIds.Count != 0)
                 {
-                    listFilter.Add(x => request.EmployeeIds.Contains(x.Id.ToString()));
+                    var upperIds = request.EmployeeIds.Select(id => id.ToUpper()).ToList();
+
+                    listFilter.Add(x => upperIds.Contains(x.Id.ToString()));
 
                     (employees, totalCount) = await _empRepo.GetAllAsync(listFilter);
 
@@ -201,7 +210,9 @@ namespace JrAssessment.Core.Services
 
                 if (request.EmployeeIds.Count != 0)
                 {
-                    listFilter.Add(x => request.EmployeeIds.Contains(x.Id.ToString()));
+                    var upperIds = request.EmployeeIds.Select(id => id.ToUpper()).ToList();
+
+                    listFilter.Add(x => upperIds.Contains(x.Id.ToString()));
 
                     (employees, totalCount) = await _empRepo.GetAllAsync(listFilter);
 
