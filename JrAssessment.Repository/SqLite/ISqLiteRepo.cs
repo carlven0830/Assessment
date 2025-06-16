@@ -12,6 +12,7 @@ namespace JrAssessment.Repository.SqLite
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
         Task<T?> DeleteAsync(Expression<Func<T, bool>> filter);
+        Task LoadReferenceAsync<K>(T entity, Expression<Func<T, IEnumerable<K>>> filter) where K : class;
     }
     public class SqLiteRepo<T> : ISqLiteRepo<T> where T : Entity
     {
@@ -140,6 +141,13 @@ namespace JrAssessment.Repository.SqLite
             }
 
             return entity;
+        }
+
+        public async Task LoadReferenceAsync<K>(T entity, Expression<Func<T, IEnumerable<K>>> filter) where K : class
+        {
+            await _context.Entry(entity)
+                .Collection(filter)
+                .LoadAsync();
         }
     }
 }

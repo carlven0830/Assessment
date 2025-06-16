@@ -6,7 +6,6 @@ using JrAssessment.Repository.SqLite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -86,8 +85,16 @@ app.UseCors();
 
 app.UseHttpsRedirection();
 
+// Serve static files before mapping controllers
+app.UseDefaultFiles();
+
+app.UseStaticFiles();
+
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Redirect to UI if no matching route is found
+app.MapFallbackToFile("index.html");
 
 app.Run();

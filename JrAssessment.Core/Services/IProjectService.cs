@@ -226,6 +226,9 @@ namespace JrAssessment.Core.Services
 
                 if (resultAccess)
                 {
+                    await _projectRepo.LoadReferenceAsync(project, x => x.TblEmployees);
+
+                    project.TblEmployees.Clear();
                     project.ProjectTitle = request.ProjectTitle;
                     project.ProjectDescription = request.ProjectDescription;
                     project.TblEmployees = employees;
